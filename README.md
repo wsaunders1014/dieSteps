@@ -30,3 +30,14 @@
     <li> x=max, or xo=max to apply exploding die to the highest face without having to change it whenver a die increase happens.
     </li>
     </p>
+
+<p> The module also takes conditional bonuses for spells with a specific save type or damage type or if a spell uses a spell attack. These bonuses can be set in effects on the character or on an item and dragging it onto a character. </p>
+
+<p> To set a conditional bonus in the effect enter `flags.dieSteps.conditional.saves.[ability]` where [ability] is three letter abbreviation of ability. So for dex saves, `flags.dieSteps.conditional.saves.dex` and set it to ADD and then enter a number.</p>
+
+<p> Damage Types works similarly, for "fire", you'd enter `flags.dieSteps.conditional.damageType.fire`, set to ADD and give it a number.</p>
+
+<p> For Spells that have an attack, set `flags.dieSteps.conditional.onAttackMod` to your desired bonus.</p>
+
+<p> The conditional bonuses are cumulative with the global bonus.
+</p>

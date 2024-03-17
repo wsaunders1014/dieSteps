@@ -1,12 +1,28 @@
 <form>
 
-
     <div class="dieSteps-field form-group">
-      <label for="dieSteps.spellGlobal">Global Spell Die Increase</label>
-      <input type="number" name="dieSteps.spellGlobal" value="{{dieSteps.spellGlobal}}"
-        placeholder="{{dieSteps.spellGlobal}}" data-tooltip="Global Spell Die Increase">
+        <label for="dieSteps.enableForActor">Enable for this character?</label>
+        {{#if dieSteps.enableForActor}}
+        <input type="checkbox" name="dieSteps.enableForActor" checked>
+        {{else}}
+         <input type="checkbox" name="dieSteps.enableForActor">
+        {{/if}}
     </div>
-    
+    <div class="dieSteps-field form-group">
+      <label for="dieSteps.globalSpellMod">Global Spell Die Increase</label>
+      <input type="number" name="dieSteps.globalSpellMod" value="{{dieSteps.globalSpellMod}}"
+        placeholder="{{dieSteps.globalSpellMod}}" data-tooltip="Global Spell Die Increase">
+    </div>
+
+
+    <!--
+            Conditional section:
+            add + sign that creates new set of fields.
+            when [spell] uses [save] [attribute]
+                              [damageType]  
+            store it in flag as dieSteps.conditional.saves[attribute].mod
+                                                    .damageType[damageType].mod
+        -->
     
    
 

@@ -1,11 +1,11 @@
 {
-    "id": "die-steps",
+    "id": "dieSteps",
     "title": "Die Step Increase",
     "description": "FoundryVTT module for setting a global die bonus increase for Captaid Feed's homebrew system. Players can configure option to increase the size of their damage die based on feats and items.",
-    "version": "0.1",
+    "version": "0.2",
     "compatibility": {
       "minimum": "11",
-      "verified": "11.307"
+      "verified": "11.315"
     },
     "relationships": {
       "systems": [
@@ -22,7 +22,7 @@
     },
     "url": "https://github.com/wsaunders1014/dieSteps",
     "manifest": "https://raw.githubusercontent.com/wsaunders1014/dieSteps/master/module.json",
-    "download": "https://github.com/wsaunders1014/dieSteps/releases/download/0.1/dieSteps.0.1.zip",
+    "download": "https://github.com/wsaunders1014/dieSteps/releases/download/0.1/dieSteps.0.2.zip",
     "authors": [
       {
         "name": "Will Saunders",
