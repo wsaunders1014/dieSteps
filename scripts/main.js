@@ -74,10 +74,12 @@ Hooks.on("renderActorSheet5eCharacter", (app, data) => {
 });
 Hooks.on('dnd5e.preUseItem', (item,data,options)=>{
     if(DieSteps.isEnabled() && DieSteps.actorEnabled(item.actor)){
-       
+        let baseLevel = item.system.level;
+        let castLevel = (data.slotLevel !== null) ? data.slotLevel.match(/\d/)[0]:0;
         if(item.type==="spell" && item.actor.flags[MODULE_NAME].globalSpellMod != 0){
             //const damages = structuredClone(item.system.damage.parts)
-          
+           
+            console.log(baseLevel,castLevel)
           
             if (item.flags.hasOwnProperty(MODULE_NAME) === false ||  !item.flags.dieSteps?.hasOwnProperty('baseFormula') ){
                 //console.error('test')
@@ -91,8 +93,53 @@ Hooks.on('dnd5e.preUseItem', (item,data,options)=>{
                        damage.push([x.join(''),curr[1]])
                })
               // console.log('damages', damage)
-              item.flags[MODULE_NAME] = {baseFormula:damage,scaling:item.system.scaling.formula};
+              item.flags[MODULE_NAME] = {baseFormula:damage,scaling:item.system.scaling.formula,formula:item.system.formula};
             }
+        }
+        if(item.type==="spell"  && item.system.formula.length > 0){
+            //Get formula from flag if already set, otherwise set it.
+           
+            if(!item.flags[MODULE_NAME].hasOwnProperty('formula')){
+                item.flags[MODULE_NAME].formula = structuredClone(item.system.formula);
+                //formula = structuredClone(item.flags[MODULE_NAME].formula);
+            }
+            let formula = structuredClone(item.flags[MODULE_NAME].formula);
+            
+          
+            const isAttack = (item.system.actionType === 'rsak' || item.system.actionType === 'msak') ? true: false;
+           
+            let {num,faces,mods,bonuses} = DieSteps.breakdownFormula(formula,castLevel);
+            let dieMod = DieSteps.getGlobalSpellMod(item.actor);
+            let newFormula;
+            if (formula.includes('ig')) return; 
+            if(item.actor.flags[MODULE_NAME].conditional?.saves?.hasOwnProperty(item.system.save.ability)){
+                dieMod += item.actor.flags[MODULE_NAME].conditional.saves[item.system.save.ability];
+            }
+           
+            if(isAttack){
+                dieMod += DieSteps.getOnAttackMod(item.actor);
+            }
+            let {newFaces,perDieBonus} = DieSteps.getModdedFace('spell',faces,dieMod); //[number of die, die face, bonus damage per num of die if any]
+            if(formula.includes('scale')){
+                let upscale = castLevel - baseLevel;
+                num = num+upscale;
+            }
+            newFormula = DieSteps.assembleFormula(num,newFaces,mods,perDieBonus,bonuses);
+               //Replace exploding die num with max number;
+           if (newFormula.includes('x=max'))
+               newFormula = newFormula.replace('x=max','x'+newFaces)
+           if(newFormula.includes('xo=max'))
+               newFormula = newFormula.replace('xo=max','xo'+newFaces)
+            if(newFormula.includes('scale')) newFormula = newFormula.replace('scale','');
+            item.system.formula = newFormula;
+        }
+    }
+});
+Hooks.on('useItem',(item)=>{
+    if(DieSteps.isEnabled() && DieSteps.actorEnabled(item.actor)){
+        if(item.type==="spell" ){
+            if(item.flag[MODULE_NAME].hasOwnProperty('formula'))
+                item.system.formula = item.flags[MODULE_NAME].formula;
         }
     }
 })
@@ -102,9 +149,10 @@ Hooks.on('updateItem', (item)=>{
         if(item.type==="spell"){
             const damages = structuredClone(item.system.damage.parts)
            // console.log('test3')            
-            item.flags[MODULE_NAME] = {baseFormula:damages,scaling:item.system.scaling.formula};
+            item.flags[MODULE_NAME] = {baseFormula:damages,scaling:item.system.scaling.formula,formula:item.system.formula};
             item.setFlag(MODULE_NAME, 'baseFormula', damages);
             item.setFlag(MODULE_NAME, 'scaling', item.system.scaling.formula)
+            item.setFlag(MODULE_NAME, 'formula',item.system.formula)
         }
     }
 })
@@ -112,19 +160,27 @@ Hooks.on('renderItemSheet5e',(app,html)=>{
     if(DieSteps.isEnabled() && DieSteps.actorEnabled(app.actor)){
         let item = app.item;
         if(item.type==="spell"){
-            if(typeof item.flags[MODULE_NAME] !=='undefined' && item.flags[MODULE_NAME].hasOwnProperty('baseFormula')){
-                item.flags[MODULE_NAME].baseFormula.forEach((curr,i)=>{
-                    let input = html.find('input[name="system.damage.parts.'+i+'.0"]');
-                   
-                    if(input.val() !== curr[0])
-                        input.val(curr[0]);
-                })
+            if(typeof item.flags[MODULE_NAME] !=='undefined'){
+                if(item.flags[MODULE_NAME].hasOwnProperty('baseFormula')){
+                    item.flags[MODULE_NAME].baseFormula.forEach((curr,i)=>{
+                        let input = html.find('input[name="system.damage.parts.'+i+'.0"]');
+                    
+                        if(input.val() !== curr[0])
+                            input.val(curr[0]);
+                    })
+                }
+                if(item.flags[MODULE_NAME].hasOwnProperty('formula')){
+                    let input = html.find('input[name="system.formula"]');
+                    if(input.val() !== item.flags[MODULE_NAME].formula)
+                        input.val(item.flags[MODULE_NAME].formula);
+                }
             }
+
         }
     }
 })
 //only gets called if a Damage Formula exists(includes Healing type)
-Hooks.on('dnd5e.preRollDamage',(item,data) =>{
+ Hooks.on('dnd5e.preRollDamage',(item,data) =>{
     //get the item's damage
     if(DieSteps.isEnabled() && DieSteps.actorEnabled(item.actor)){
        
@@ -149,23 +205,23 @@ Hooks.on('dnd5e.preRollDamage',(item,data) =>{
                 if (defaultFormula.includes('ig')) return; //ignore field.
                 let newFormula, dieArray;
 
-                /* Separate die into separate parts:
-                    num - Integer of die rolled
-                    faces - Integer of the face of the die.
-                    mods - String of the mods to the die such as r,rr,x,xo,kh,kl
-                    bonuses - String of numerical bonuses to the roll
-                    1d10r<3 + 4 = {num:1, faces:10, mods: 'r<3', bonuses:' + 4'}
-                */
+                // Separate die into separate parts:
+                //  num - Integer of die rolled
+                //    faces - Integer of the face of the die.
+                //    mods - String of the mods to the die such as r,rr,x,xo,kh,kl
+                //    bonuses - String of numerical bonuses to the roll
+                //   1d10r<3 + 4 = {num:1, faces:10, mods: 'r<3', bonuses:' + 4'}
+                //
                 let {num,faces,mods,bonuses} = DieSteps.breakdownFormula(defaultFormula,data.data.item.level); // returns {num,faces,mods}
      
-                /*
-                    Get Global Mod - How many times to increase the die face.
-                */
+                //
+                //    Get Global Mod - How many times to increase the die face.
+                //
                 let dieMod = DieSteps.getGlobalSpellMod(item.actor);
 
-                /*
-                    Get conditional mods.
-                */
+                //
+                //    Get conditional mods.
+                //
                 if(item.actor.flags[MODULE_NAME].conditional?.saves?.hasOwnProperty(item.system.save.ability)){
                     dieMod += item.actor.flags[MODULE_NAME].conditional.saves[item.system.save.ability];
                 }
@@ -262,7 +318,7 @@ Hooks.on('dnd5e.preRollDamage',(item,data) =>{
             })
         }
     }
-})
+}) 
 Hooks.on('dnd5e.rollDamage',(item,roll)=>{
    
     if(DieSteps.isEnabled() && DieSteps.actorEnabled(item.actor)){
