@@ -1,8 +1,7 @@
 export const MODULE_NAME = 'dieSteps';
-//import { Instructions } from "./dieSteps.js";}
 
 import { DieSteps } from "./dieSteps.js";
-CONFIG.debug.hooks = true;
+//CONFIG.debug.hooks = true;
 Hooks.on('init', () => {
     game.settings.register(MODULE_NAME, "dieStepEnabled", {
         name: "Enable dieStep increases",
@@ -48,7 +47,7 @@ Hooks.on('renderApplication',(app,html)=>{
     </div></div>`);
 })
 Hooks.on('controlToken', (token)=>{
-    if(DieSteps.isEnabled()){
+  /*   if(DieSteps.isEnabled()){
         //add die step config to Special Traits config.
        
         if(!token.actor.flags.hasOwnProperty(MODULE_NAME) || !token.actor.flags[MODULE_NAME].hasOwnProperty('globalSpellMod')){
@@ -61,6 +60,14 @@ Hooks.on('controlToken', (token)=>{
         }
         if(!token.actor.flags.hasOwnProperty(MODULE_NAME) || !token.actor.flags[MODULE_NAME].hasOwnProperty('enableForActor')){
             token.actor.setFlag(MODULE_NAME,'enableForActor', false);
+        }
+    } */
+})
+Hooks.on('preUpdateActor',(actor,update,diff)=>{
+    console.log(actor,update,diff)
+    if(update.hasOwnProperty('flags')){
+        if(update.flags.hasOwnProperty('dieSteps')){
+            console.log('updates',update)
         }
     }
 })
@@ -92,7 +99,7 @@ Hooks.on('dnd5e.preUseItem', (item,data,options)=>{
                    x.push(DieSteps.getDieMods(curr[0]))
                        damage.push([x.join(''),curr[1]])
                })
-              // console.log('damages', damage)
+               console.log('damages', damage)
               item.flags[MODULE_NAME] = {baseFormula:damage,scaling:item.system.scaling.formula,formula:item.system.formula};
             }
         }
@@ -202,7 +209,7 @@ Hooks.on('renderItemSheet5e',(app,html)=>{
                 // curr = [damage formula, damageType]
 
                 let defaultFormula = curr[0];
-                if (defaultFormula.includes('ig')) return; //ignore field.
+                if (defaultFormula.includes('ig') || !defaultFormula.includes('d')) return; //ignore field.
                 let newFormula, dieArray;
 
                 // Separate die into separate parts:
@@ -278,8 +285,9 @@ Hooks.on('renderItemSheet5e',(app,html)=>{
                                     let {num,faces,bonuses} = DieSteps.breakdownFormula(scaleFormula,data.data.item.level);
                                     //console.log(data.data.item.level, item.system.level, num)
                                     let upscale =  data.data.item.level - item.system.level - 1;
-                                    num = num+upscale;
-                                    
+                               
+                                    num = num+(num *upscale);
+                                   
                             
                                     let {newFaces,perDieBonus} = DieSteps.getModdedFace('spell',faces,dieMod);
                                     newScaleFormula = DieSteps.assembleFormula(num,newFaces,mods,'','');

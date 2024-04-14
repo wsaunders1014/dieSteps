@@ -30,12 +30,15 @@ export class DieSteps {
    * @returns The return value is the html_checkbox variable.
    */
     static addConfigButton(app, data){
-        
-        app.element.find('.traits').append('<div class="form-group"><label>Die Step Increases</label><a class="config-button dieStepConfig" data-action="dieStep" data-tooltip="Configure Die Step Increases"><i class="fas fa-cog"></i></a></div>')
-        app.element.on('click','.dieStepConfig', (e)=>{
-         //   e.preventDefault();
-            new DieStepConfig(app.actor).render(true);
-        })
+        console.log(app.element.find('a.dieStepConfig').length)
+        if(app.element.find('a.dieStepConfig').length === 0){
+            app.element.find('.traits').append('<div class="form-group"><label>Die Step Increases</label><a class="config-button dieStepConfig" data-action="dieStep" data-tooltip="Configure Die Step Increases"><i class="fas fa-cog"></i></a></div>')
+            app.element.find('.dieStepConfig').on('click', (e)=>{
+            //   e.preventDefault();
+            if($('#dieStep-config').length === 0)
+                new DieStepConfig(app.actor).render(true);
+            })
+        }
     }
     /*
     *  Take a formula like '1d4r<3 + 4' and break it down into number of die rolled, number of faces and mods.
@@ -47,15 +50,16 @@ export class DieSteps {
         
         let match = formula.split('d');
         let dIndex = formula.match(/d/).index;
-       
-
+      
+      
          let num =  formula.slice(0,dIndex); // match[0]; // the 1 in 1d4. Could also be an expression like(floor((@item.level)-1)/2)
          formula = formula.slice(dIndex+1); //remove num and "d" from expression.
          let faces = parseInt(formula.match(/\d+/)[0]); // the 4 in 1d4
          formula = formula.slice(formula.match(/\d+/)[0].length)
          let mods =  (formula.match(/^([^\s+-]+)/)===null) ? '':formula.match(/^([^\s+-]+)/)[0]; // everything that comes after 1d4.
          let bonuses = (formula.match(/(\s*\+\s*.+)/)===null)? '':formula.match(/(\s*\+\s*.+)/)[0];
-        console.log('breakdown',num,faces,mods,bonuses)
+       
+        
         if(baseDie === null){
             //formula doesn't conform to xdX format(1d4,etc) like for spells that scale every two levels
             let exp = num;        
@@ -165,9 +169,16 @@ export class DieStepConfig extends FormApplication {
     }
    async _updateObject(event, formData) {
         const dieSteps = foundry.utils.expandObject(formData).dieSteps;
+        dieSteps.globalSpellMod = (dieSteps.globalSpellMod == null) ? 0: dieSteps.globalSpellMod;
         await this.object.setFlag(MODULE_NAME, 'globalSpellMod', dieSteps.globalSpellMod);
         await this.object.setFlag(MODULE_NAME, 'enableForActor', dieSteps.enableForActor);
-
+        if(!this.object.flags[MODULE_NAME].hasOwnProperty('conditional')){
+            await this.object.setFlag(MODULE_NAME, 'conditional', {
+                damageType: {},
+                onAttackMod: 0,
+                saves: {}
+            });
+        }
     }
     activateListeners(html) {
         super.activateListeners(html);
